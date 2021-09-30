@@ -29,7 +29,7 @@ jobs:
       
   PACE_API_URL: https://pace.qentinel.com/pace/v4/builds
   PACE_API_KEY: b372949c-5c4a-4006-afc7-d6d0210a6319
-# Start the build
+
 BUILD=$(curl -sS -d '{"key": "'${PACE_API_KEY}'", "inputParameters": [{"key": "BROWSER", "value": "firefox"}]}' -H "Content-Type: application/json" -X POST ${PACE_API_URL})
 echo "${BUILD}"
 BUILD_ID=$(echo "${BUILD}" | grep -Po '"id":\K[0-9]+')
