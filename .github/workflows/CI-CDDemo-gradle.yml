@@ -1,0 +1,51 @@
+# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+        cache: gradle
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew build
+      
+  PACE_API_URL: https://pace.qentinel.com/pace/v4/builds
+  PACE_API_KEY: b372949c-5c4a-4006-afc7-d6d0210a6319
+# Start the build
+BUILD=$(curl -sS -d '{"key": "'${PACE_API_KEY}'", "inputParameters": [{"key": "BROWSER", "value": "firefox"}]}' -H "Content-Type: application/json" -X POST ${PACE_API_URL})
+echo "${BUILD}"
+BUILD_ID=$(echo "${BUILD}" | grep -Po '"id":\K[0-9]+')
+if [ -z "${BUILD_ID}" ]; then
+  exit 1
+fi
+echo -n "Executing tests "
+STATUS='"executing"'
+# Poll every 10 seconds until the build is finished
+while [ "${STATUS}" == '"executing"' ]; do
+  sleep 10
+  RESULTS=$(curl -sS ${PACE_API_URL}/${BUILD_ID}?key=${PACE_API_KEY})
+  STATUS=$(echo "${RESULTS}" | grep -Po '"status": *\K"[^"]*"' | head -1)
+  echo -n "."
+done
+echo " done!"
+FAILURES=$(echo ${RESULTS} | grep -Po '"failures":\K[0-9]+')
+LOG_REPORT_URL=$(echo "${RESULTS}" | grep -Po '"logReportUrl": *\K"[^"]*"')
+echo "Report URL: ${LOG_REPORT_URL}"
